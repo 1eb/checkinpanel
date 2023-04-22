@@ -39,6 +39,15 @@ email = "xxxxxxxx@qq.com"
 password = "xxxxxxxx"
 url = "https://xxxxxxxx.xxx"
 
+# 机场签到(django-sspanel)
+# 用户名
+# 密码
+# 链接，只支持 django-sspanel，基于share.cjy.me制作，其他站点未测试。删除 /login
+[[AIRPORT-DJANGO]]
+email = "xxxxxxxx@qq.com"
+password = "xxxxxxxx"
+url = "https://share.cjy.me"
+
 # 爱企查【WEB】
 # https://www.baidu.com 同百度贴吧 cookie 一样
 # 批量查询任务需手动抓包查询之后的 exportkey，可不填

@@ -5,12 +5,13 @@ django-sspanel 机场签到，基于share.cjy.me，其他站点未测试
 cron: 20 7 * * *
 new Env('机场签到(django-sspanel)');
 """
-
+import os
 import json
 import re
 import traceback
 
 import requests
+from requests.adapters import HTTPAdapter
 import urllib3
 
 from notify_mtr import send
@@ -26,14 +27,20 @@ class SspanelQd:
     @staticmethod
     def checkin(url, email, password):
         url = url.rstrip("/")
-        emails = email.split("@")
-        email = f"{emails[0]}%40{emails[1]}" if len(emails) > 1 else emails[0]
+        #emails = email.split("@")
+        #email = f"{emails[0]}%40{emails[1]}" if len(emails) > 1 else emails[0]
         session = requests.session()
+        session.mount('https://', HTTPAdapter(max_retries=3))
+
 
         # 以下 except 都是用来捕获当 requests 请求出现异常时，
         # 通过捕获然后等待网络情况的变化，以此来保护程序的不间断运行
+
+        login_url = f"{url}/mjj6/"
+
         try:
-            session.get(url, verify=False)
+            print(f"{url} 开始请求")
+            session.get(login_url, verify=False, timeout=10)
         except requests.exceptions.ConnectionError:
             return f"{url}\n网络不通"
         except requests.exceptions.ChunkedEncodingError:
@@ -41,8 +48,6 @@ class SspanelQd:
         except Exception:
             print(f"未知错误，错误信息：\n{traceback.format_exc()}")
             return f"{url}\n未知错误，请查看日志"
-
-        login_url = f"{url}/login/"
 
         #  获取登录页csrfmiddlewaretoken
         headers = {
@@ -52,26 +57,30 @@ class SspanelQd:
         }
 
         try:
+            print(f"{url} 开始登录")
             response = session.get(login_url, headers=headers, verify=False)
-            #正则提取csrfmiddlewaretoken
-            csrfmiddlewaretoken = re.findall('<input type="hidden" name="csrfmiddlewaretoken" value="(.*?)">', response.text)[0]
+            # 正则提取csrfmiddlewaretoken
+            csrfmiddlewaretoken = re.findall(
+                '<input type="hidden" name="csrfmiddlewaretoken" value="(.*?)">', response.text)[0]
             print(f"{url} 获取登录页csrfmiddlewaretoken：{csrfmiddlewaretoken}")
         except Exception:
-            print(f"获取登录页csrfmiddlewaretoken失败，错误信息：\n{traceback.format_exc()}")
+            print(
+                f"获取登录页csrfmiddlewaretoken失败，错误信息：\n{traceback.format_exc()}")
             return f"{url}\n获取登录页csrfmiddlewaretoken失败，请查看日志"
 
-    
-        #登录
+        # 登录
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
             "AppleWebKit/537.36 (KHTML, like Gecko) "
             "Chrome/112.0.0.0 Safari/537.36",
             "Content-Type": "application/x-www-form-urlencoded",
-            "Referer": f"{url}/login/",
+            "Referer": login_url,
         }
-        login_data = f"csrfmiddlewaretoken={csrfmiddlewaretoken}&username={email}&password={password}".encode()
+        login_data = f"csrfmiddlewaretoken={csrfmiddlewaretoken}&username={email}&password={password}".encode(
+        )
 
         try:
+            print(f"{url} 正在登录")
             response = session.post(
                 login_url, login_data, headers=headers, verify=False, allow_redirects=False
             )
@@ -82,26 +91,26 @@ class SspanelQd:
         except Exception:
             print(f"登录失败，错误信息：\n{traceback.format_exc()}")
             return f"{url}\n登录失败，请查看日志"
-        
+
         # 用户信息页获取签到csrf
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
             "AppleWebKit/537.36 (KHTML, like Gecko) "
             "Chrome/112.0.0.0 Safari/537.36",
-            "Referer": f"{url}/login/",
+            "Referer": login_url,
         }
         info_url = f"{url}/users/userinfo/"
 
         try:
             response = session.get(info_url, headers=headers, verify=False)
-            csrfmiddlewaretoken = re.findall(r'csrfmiddlewaretoken\: \'(.*?)\',', response.text)[0]
+            csrfmiddlewaretoken = re.findall(
+                r'csrfmiddlewaretoken\: \'(.*?)\',', response.text)[0]
             print(f"{url} 获取签到csrfmiddlewaretoken：{csrfmiddlewaretoken}")
         except Exception:
             print(f"获取签到csrfmiddlewaretoken失败，错误信息：\n{traceback.format_exc()}")
             return f"{url}\n获取签到csrfmiddlewaretoken失败，请查看日志"
 
-
-        #签到
+        # 签到
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
             "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -137,12 +146,15 @@ class SspanelQd:
         info_url = f"{url}/users/userinfo/"
         try:
             temporary_traffic = re.findall(
-                r'\<li\>时效流量:\s+\<code\>(.*?)\<\/code\>', response.text)[0]
+                r'\<li\>时效:\s+\<code\>(.*?)\<\/code\>', response.text)[0]
             eternal_traffic = re.findall(
-                r'\<li\>永久流量:\s+\<code\>(.*?)\<\/code\>', response.text)[0]
-            bonus = re.findall(r'\<li\> 魔力值：\s+\<code\>(.*?)\<\/code\>', response.text)[0]
-            level = re.findall(r'\<li\> 用户组：\s+\<code\>(.*?)\<\/code\>', response.text)[0]
-            exp_time = re.findall(r'\<li\> 贵宾到期时间：\s+\<code\>(.*?)\<\/code\>', response.text)[0]
+                r'\<li\>永久:\s+\<code\>(.*?)\<\/code\>', response.text)[0]
+            bonus = re.findall(
+                r'\<li\> 魔力值：\s+\<code\>(.*?)\<\/code\>', response.text)[0]
+            level = re.findall(
+                r'\<li\> 用户组：\s+\<code\>(.*?)\<\/code\>', response.text)[0]
+            exp_time = re.findall(
+                r'\<li\> 贵宾到期时间：\s+\<code\>(.*?)\<\/code\>', response.text)[0]
 
             return (
                 f"{url}\n"
@@ -155,7 +167,6 @@ class SspanelQd:
             )
         except Exception:
             return msg
-        
 
     def main(self):
         msg_all = ""
@@ -177,4 +188,4 @@ if __name__ == "__main__":
     _data = get_data()
     _check_items = _data.get("AIRPORT-DJANGO", [])
     res = SspanelQd(check_items=_check_items).main()
-    send("机场签到", res)
+    send("机场签到-DJANGO", res)

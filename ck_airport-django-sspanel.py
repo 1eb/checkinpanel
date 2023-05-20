@@ -141,20 +141,16 @@ class SspanelQd:
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
             "AppleWebKit/537.36 (KHTML, like Gecko) "
             "Chrome/112.0.0.0 Safari/537.36",
-            "Referer": f"{url}/login/",
+            "Referer": login_url,
         }
         info_url = f"{url}/users/userinfo/"
         try:
-            temporary_traffic = re.findall(
-                r'\<li\>时效:\s+\<code\>(.*?)\<\/code\>', response.text)[0]
-            eternal_traffic = re.findall(
-                r'\<li\>永久:\s+\<code\>(.*?)\<\/code\>', response.text)[0]
-            bonus = re.findall(
-                r'\<li\> 魔力值：\s+\<code\>(.*?)\<\/code\>', response.text)[0]
-            level = re.findall(
-                r'\<li\> 用户组：\s+\<code\>(.*?)\<\/code\>', response.text)[0]
-            exp_time = re.findall(
-                r'\<li\> 贵宾到期时间：\s+\<code\>(.*?)\<\/code\>', response.text)[0]
+            response = session.get(info_url, headers=headers, verify=False)
+            temporary_traffic = re.findall(r'\<li\>时效:\s+\<code\>(.*?)\<\/code\>', response.text)[0]
+            eternal_traffic = re.findall(r'\<li\>永久:\s+\<code\>(.*?)\<\/code\>', response.text)[0]
+            bonus = re.findall(r'\<li\> 魔力值：\s+\<code\>(.*?)\<\/code\>', response.text)[0]
+            level = re.findall(r'\<li\> 用户组：\s+\<code\>(.*?)\<\/code\>', response.text)[0]
+            exp_time = re.findall(r'\<li\> 捐赠组到期时间：\s+\<code\>(.*?)\<\/code\>', response.text)[0]
 
             return (
                 f"{url}\n"

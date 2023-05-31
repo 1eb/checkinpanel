@@ -2,7 +2,7 @@
 """
 django-sspanel 机场签到，基于share.cjy.me，其他站点未测试
 :author @Icrons @1eb
-cron: 20 7 * * *
+cron: 20 7 * * 4
 new Env('机场签到(django-sspanel)');
 """
 import os

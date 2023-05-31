@@ -27,11 +27,10 @@ class SspanelQd:
     @staticmethod
     def checkin(url, email, password):
         url = url.rstrip("/")
-        #emails = email.split("@")
-        #email = f"{emails[0]}%40{emails[1]}" if len(emails) > 1 else emails[0]
+        # emails = email.split("@")
+        # email = f"{emails[0]}%40{emails[1]}" if len(emails) > 1 else emails[0]
         session = requests.session()
         session.mount('https://', HTTPAdapter(max_retries=3))
-
 
         # 以下 except 都是用来捕获当 requests 请求出现异常时，
         # 通过捕获然后等待网络情况的变化，以此来保护程序的不间断运行
@@ -58,7 +57,8 @@ class SspanelQd:
 
         try:
             print(f"{url} 开始登录")
-            response = session.get(login_url, headers=headers, verify=False)
+            response = session.get(
+                login_url, headers=headers, verify=False, timeout=10)
             # 正则提取csrfmiddlewaretoken
             csrfmiddlewaretoken = re.findall(
                 '<input type="hidden" name="csrfmiddlewaretoken" value="(.*?)">', response.text)[0]
@@ -82,7 +82,7 @@ class SspanelQd:
         try:
             print(f"{url} 正在登录")
             response = session.post(
-                login_url, login_data, headers=headers, verify=False, allow_redirects=False
+                login_url, login_data, headers=headers, verify=False, allow_redirects=False, timeout=10
             )
             if response.status_code == 302:
                 print(f"{url} 登录成功")
@@ -102,7 +102,8 @@ class SspanelQd:
         info_url = f"{url}/users/userinfo/"
 
         try:
-            response = session.get(info_url, headers=headers, verify=False)
+            response = session.get(
+                info_url, headers=headers, verify=False, timeout=10)
             csrfmiddlewaretoken = re.findall(
                 r'csrfmiddlewaretoken\: \'(.*?)\',', response.text)[0]
             print(f"{url} 获取签到csrfmiddlewaretoken：{csrfmiddlewaretoken}")
@@ -122,7 +123,7 @@ class SspanelQd:
         checkin_data = f"csrfmiddlewaretoken={csrfmiddlewaretoken}".encode()
         try:
             response = session.post(
-                checkin_url, checkin_data, headers=headers, verify=False, allow_redirects=False
+                checkin_url, checkin_data, headers=headers, verify=False, allow_redirects=False, timeout=10
             )
             sign_text = response.text
             print(f"{url} 接口签到返回信息：{sign_text}")
@@ -145,12 +146,18 @@ class SspanelQd:
         }
         info_url = f"{url}/users/userinfo/"
         try:
-            response = session.get(info_url, headers=headers, verify=False)
-            temporary_traffic = re.findall(r'\<li\>时效:\s+\<code\>(.*?)\<\/code\>', response.text)[0]
-            eternal_traffic = re.findall(r'\<li\>永久:\s+\<code\>(.*?)\<\/code\>', response.text)[0]
-            bonus = re.findall(r'\<li\> 魔力值：\s+\<code\>(.*?)\<\/code\>', response.text)[0]
-            level = re.findall(r'\<li\> 用户组：\s+\<code\>(.*?)\<\/code\>', response.text)[0]
-            exp_time = re.findall(r'\<li\> 捐赠组到期时间：\s+\<code\>(.*?)\<\/code\>', response.text)[0]
+            response = session.get(
+                info_url, headers=headers, verify=False, timeout=10)
+            temporary_traffic = re.findall(
+                r'\<li\>时效:\s+\<code\>(.*?)\<\/code\>', response.text)[0]
+            eternal_traffic = re.findall(
+                r'\<li\>永久:\s+\<code\>(.*?)\<\/code\>', response.text)[0]
+            bonus = re.findall(
+                r'\<li\> 魔力值：\s+\<code\>(.*?)\<\/code\>', response.text)[0]
+            level = re.findall(
+                r'\<li\> 用户组：\s+\<code\>(.*?)\<\/code\>', response.text)[0]
+            exp_time = re.findall(
+                r'\<li\> 捐赠组到期时间：\s+\<code\>(.*?)\<\/code\>', response.text)[0]
 
             return (
                 f"{url}\n"
